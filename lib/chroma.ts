@@ -15,7 +15,9 @@ import type {
  */
 export function getChromaClient(host: string, port: number): ChromaClient {
   return new ChromaClient({
-    path: `http://${host}:${port}`,
+    host,
+    port,
+    ssl: false,
   });
 }
 
