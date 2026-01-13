@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" fill="none">
+  <!-- Background -->
+  <rect width="180" height="180" rx="40" fill="#18181b"/>
+
+  <!-- Vector points representing embeddings with chroma colors -->
+  <circle cx="45" cy="56" r="17" fill="#f472b6"/>
+  <circle cx="90" cy="39" r="17" fill="#a78bfa"/>
+  <circle cx="135" cy="56" r="17" fill="#60a5fa"/>
+  <circle cx="56" cy="101" r="17" fill="#fb923c"/>
+  <circle cx="90" cy="90" r="20" fill="#fbbf24"/>
+  <circle cx="124" cy="101" r="17" fill="#4ade80"/>
+  <circle cx="68" cy="141" r="17" fill="#f87171"/>
+  <circle cx="112" cy="141" r="17" fill="#2dd4bf"/>
+
+  <!-- Connecting lines suggesting vector relationships -->
+  <path d="M45 56L90 90M90 39L90 90M135 56L90 90M56 101L90 90M124 101L90 90M68 141L90 90M112 141L90 90" stroke="#fbbf24" stroke-width="4" stroke-opacity="0.5"/>
+</svg>
