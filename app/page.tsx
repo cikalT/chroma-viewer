@@ -1,63 +1,108 @@
-import Image from "next/image";
+"use client";
 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Database } from "lucide-react";
+import { useConnection } from "@/lib/hooks/use-connection";
+import { ConnectionStatus } from "@/components/connection/connection-status";
+import { CollectionSelector } from "@/components/connection/collection-selector";
+import { Skeleton } from "@/components/ui/skeleton";
+
+/**
+ * Main page component.
+ * Redirects to settings if not connected.
+ * Shows collection selector and placeholder when connected.
+ */
 export default function Home() {
+  const router = useRouter();
+  const { isConnected } = useConnection();
+  const [selectedCollection, setSelectedCollection] = useState<string>("");
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Wait for hydration before checking connection
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  // Redirect to settings if not connected (after hydration)
+  useEffect(() => {
+    if (isHydrated && !isConnected) {
+      router.push("/settings");
+    }
+  }, [isHydrated, isConnected, router]);
+
+  // Show loading skeleton while hydrating
+  if (!isHydrated) {
+    return (
+      <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black">
+        <header className="border-b bg-white dark:bg-zinc-950">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-8 w-32" />
+          </div>
+        </header>
+        <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-8">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-64 w-full" />
+        </main>
+      </div>
+    );
+  }
+
+  // If not connected, show nothing while redirecting
+  if (!isConnected) {
+    return null;
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black">
+      {/* Header */}
+      <header className="border-b bg-white dark:bg-zinc-950">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <Database className="h-6 w-6" />
+            <h1 className="text-xl font-semibold">Chroma DB Viewer</h1>
+          </div>
+          <ConnectionStatus />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </header>
+
+      {/* Main content */}
+      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-8">
+        {/* Collection selector */}
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-medium text-muted-foreground">
+            Collection:
+          </span>
+          <CollectionSelector
+            value={selectedCollection}
+            onSelect={setSelectedCollection}
+          />
+        </div>
+
+        {/* Placeholder content */}
+        <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed bg-white p-12 dark:bg-zinc-950">
+          {selectedCollection ? (
+            <div className="text-center">
+              <Database className="mx-auto h-12 w-12 text-muted-foreground" />
+              <h2 className="mt-4 text-lg font-semibold">
+                Collection: {selectedCollection}
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Records viewer will be implemented in the next phase
+              </p>
+            </div>
+          ) : (
+            <div className="text-center">
+              <Database className="mx-auto h-12 w-12 text-muted-foreground" />
+              <h2 className="mt-4 text-lg font-semibold">
+                Select a Collection
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Choose a collection from the dropdown above to view its records
+              </p>
+            </div>
+          )}
         </div>
       </main>
     </div>
