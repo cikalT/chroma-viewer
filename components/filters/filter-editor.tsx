@@ -91,8 +91,10 @@ export function FilterEditor({
   const [value, setValue] = useState(valueToString(initialFilter?.value));
 
   // Reset form when filter changes or popover opens
+  // This is a controlled component that syncs form state with dialog open state
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setField(initialFilter?.field || "");
       setOperator(initialFilter?.operator || "$eq");
       setValue(valueToString(initialFilter?.value));

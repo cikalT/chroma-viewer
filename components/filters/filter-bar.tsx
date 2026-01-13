@@ -39,10 +39,6 @@ export function FilterBar({
   const [addFilterOpen, setAddFilterOpen] = useState(false);
   const [editingFilterId, setEditingFilterId] = useState<string | null>(null);
 
-  const editingFilter = editingFilterId
-    ? filters.find((f) => f.id === editingFilterId)
-    : undefined;
-
   const handleAddFilter = (filter: Omit<Filter, "id">) => {
     onAddFilter(filter);
     setAddFilterOpen(false);

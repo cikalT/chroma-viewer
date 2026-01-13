@@ -33,8 +33,10 @@ export function AdvancedFilter({
   const [error, setError] = useState<string | null>(null);
 
   // Initialize JSON value when dialog opens
+  // This is a controlled component that syncs form state with dialog open state
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setJsonValue(
         whereClause ? JSON.stringify(whereClause, null, 2) : ""
       );

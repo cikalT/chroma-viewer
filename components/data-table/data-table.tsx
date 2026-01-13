@@ -34,6 +34,9 @@ export function DataTable<TData, TValue>({
   isLoading = false,
   pageCount = 0,
 }: DataTableProps<TData, TValue>) {
+  // TanStack Table returns mutable functions that cannot be memoized
+  // This is expected behavior for the library
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,

@@ -25,6 +25,7 @@ export function useConnection(): UseConnectionReturn {
   const [isHydrated, setIsHydrated] = useState(false);
 
   // Load connection from localStorage on mount (client-side only)
+  // This is a valid pattern for syncing with external storage (localStorage)
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -35,6 +36,7 @@ export function useConnection(): UseConnectionReturn {
           typeof parsed.host === "string" &&
           typeof parsed.port === "number"
         ) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setConnectionState(parsed);
         }
       }

@@ -1,6 +1,7 @@
 {
   "name": "chroma-viewer",
   "version": "0.1.0",
+  "description": "A modern web UI for browsing and exploring ChromaDB vector database collections",
   "private": true,
   "scripts": {
     "dev": "next dev",

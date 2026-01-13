@@ -78,7 +78,9 @@ export default function Home() {
   });
 
   // Wait for hydration before checking connection
+  // This is a valid pattern for detecting client-side hydration
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsHydrated(true);
   }, []);
 
