@@ -118,7 +118,7 @@ export function CollectionSelector({
       <SelectTrigger className="w-[250px]">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="max-h-[300px] overflow-y-auto">
         {collections.map((collection) => (
           <SelectItem key={collection.name} value={collection.name}>
             <div className="flex items-center justify-between gap-3">
