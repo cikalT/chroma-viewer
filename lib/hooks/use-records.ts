@@ -8,6 +8,7 @@ export interface UseRecordsOptions {
   collection: string;
   initialPage?: number;
   initialPageSize?: number;
+  where?: Record<string, unknown> | null;
 }
 
 export interface UseRecordsReturn {
@@ -32,6 +33,7 @@ export function useRecords({
   collection,
   initialPage = 1,
   initialPageSize = 10,
+  where,
 }: UseRecordsOptions): UseRecordsReturn {
   const { connection } = useConnection();
   const [records, setRecords] = useState<ChromaRecord[]>([]);
@@ -52,15 +54,22 @@ export function useRecords({
     setError(null);
 
     try {
-      const response = await fetch(
-        `/api/records?collection=${encodeURIComponent(collection)}&page=${page}&pageSize=${pageSize}`,
-        {
-          headers: {
-            "X-Chroma-Host": connection.host,
-            "X-Chroma-Port": String(connection.port),
-          },
-        }
-      );
+      const params = new URLSearchParams({
+        collection,
+        page: String(page),
+        pageSize: String(pageSize),
+      });
+
+      if (where) {
+        params.set("where", JSON.stringify(where));
+      }
+
+      const response = await fetch(`/api/records?${params.toString()}`, {
+        headers: {
+          "X-Chroma-Host": connection.host,
+          "X-Chroma-Port": String(connection.port),
+        },
+      });
 
       if (!response.ok) {
         const data = await response.json();
@@ -79,17 +88,17 @@ export function useRecords({
     } finally {
       setIsLoading(false);
     }
-  }, [collection, connection, page, pageSize]);
+  }, [collection, connection, page, pageSize, where]);
 
   // Fetch records when dependencies change
   useEffect(() => {
     fetchRecords();
   }, [fetchRecords]);
 
-  // Reset to page 1 when collection or pageSize changes
+  // Reset to page 1 when collection, pageSize, or filters change
   useEffect(() => {
     setPage(1);
-  }, [collection, pageSize]);
+  }, [collection, pageSize, where]);
 
   const handleSetPage = useCallback((newPage: number) => {
     setPage(newPage);

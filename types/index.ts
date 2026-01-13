@@ -34,3 +34,27 @@ export interface ChromaResult<T> {
   data?: T;
   error?: string;
 }
+
+/**
+ * Filter operator types supported by Chroma
+ */
+export type FilterOperator = '$eq' | '$ne' | '$gt' | '$lt' | '$in';
+
+/**
+ * A filter for querying records by metadata
+ */
+export interface Filter {
+  id: string;
+  field: string;
+  operator: FilterOperator;
+  value: string | number | string[];
+}
+
+/**
+ * Metadata field information from API
+ */
+export interface MetadataField {
+  name: string;
+  type: string;
+  sampleValues: unknown[];
+}

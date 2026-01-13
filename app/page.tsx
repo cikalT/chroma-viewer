@@ -6,12 +6,15 @@ import { Database, AlertCircle, X } from "lucide-react";
 import { useConnection } from "@/lib/hooks/use-connection";
 import { useRecords } from "@/lib/hooks/use-records";
 import { useSearch } from "@/lib/hooks/use-search";
+import { useFilters } from "@/lib/hooks/use-filters";
+import { useMetadata } from "@/lib/hooks/use-metadata";
 import { ConnectionStatus } from "@/components/connection/connection-status";
 import { CollectionSelector } from "@/components/connection/collection-selector";
 import { DataTable } from "@/components/data-table/data-table";
 import { createColumns } from "@/components/data-table/columns";
 import { Pagination } from "@/components/data-table/pagination";
 import { SearchBar } from "@/components/search/search-bar";
+import { FilterBar } from "@/components/filters/filter-bar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import type { ChromaRecord } from "@/types";
@@ -27,6 +30,22 @@ export default function Home() {
   const [selectedCollection, setSelectedCollection] = useState<string>("");
   const [isHydrated, setIsHydrated] = useState(false);
 
+  // Filters hook
+  const {
+    filters,
+    addFilter,
+    removeFilter,
+    updateFilter,
+    clearFilters,
+    setFiltersFromWhere,
+    whereClause,
+  } = useFilters();
+
+  // Metadata hook for auto-discovering fields
+  const { fields: metadataFields } = useMetadata({
+    collection: selectedCollection,
+  });
+
   const {
     records,
     total,
@@ -38,6 +57,7 @@ export default function Home() {
     error: recordsError,
   } = useRecords({
     collection: selectedCollection,
+    where: whereClause,
   });
 
   const {
@@ -65,10 +85,11 @@ export default function Home() {
     }
   }, [isHydrated, isConnected, router]);
 
-  // Clear search when collection changes
+  // Clear search and filters when collection changes
   useEffect(() => {
     clearSearch();
-  }, [selectedCollection, clearSearch]);
+    clearFilters();
+  }, [selectedCollection, clearSearch, clearFilters]);
 
   // Handle Find Similar action
   const handleFindSimilar = useCallback(
@@ -156,6 +177,30 @@ export default function Home() {
               isSearching={isSearching}
               disabled={!selectedCollection}
             />
+
+            {/* Filter bar */}
+            <FilterBar
+              filters={filters}
+              fields={metadataFields}
+              onAddFilter={addFilter}
+              onRemoveFilter={removeFilter}
+              onUpdateFilter={updateFilter}
+              onClearFilters={clearFilters}
+              onApplyAdvancedFilter={setFiltersFromWhere}
+              whereClause={whereClause}
+              disabled={!selectedCollection}
+            />
+
+            {/* Filter info */}
+            {filters.length > 0 && !isSearchActive && (
+              <div className="flex items-center justify-between rounded-lg border bg-blue-50 dark:bg-blue-950/30 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                    Showing {total} filtered record{total !== 1 ? "s" : ""} ({filters.length} filter{filters.length !== 1 ? "s" : ""} active)
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Search results info */}
             {isSearchActive && (
