@@ -58,3 +58,17 @@ export interface MetadataField {
   type: string;
   sampleValues: unknown[];
 }
+
+/**
+ * Supported embedding providers
+ */
+export type EmbeddingProvider = "none" | "openai" | "gemini";
+
+/**
+ * Configuration for embedding provider
+ */
+export interface EmbeddingConfig {
+  provider: EmbeddingProvider;
+  apiKey: string;
+  model?: string;
+}

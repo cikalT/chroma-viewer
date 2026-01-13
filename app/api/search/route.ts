@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { Where } from "chromadb";
 import { getConnectionFromHeaders, getCollection } from "@/lib/chroma";
+import { getEmbeddingFromHeaders, createEmbeddingFunction } from "@/lib/embedding";
 import { searchBodySchema } from "@/lib/validations";
 import type { ChromaRecord } from "@/types";
 
@@ -53,11 +54,32 @@ export async function POST(request: Request) {
   const { collection: collectionName, query, type, limit, where } =
     parseResult.data;
 
-  // Get the collection
+  // Get embedding config from headers (for semantic search)
+  const embeddingConfig = getEmbeddingFromHeaders(request.headers);
+
+  // Create embedding function if configured and doing semantic search
+  let embeddingFunction;
+  if (type === "semantic" && embeddingConfig) {
+    const embeddingResult = createEmbeddingFunction(
+      embeddingConfig.provider,
+      embeddingConfig.apiKey,
+      embeddingConfig.model
+    );
+    if (!embeddingResult.success) {
+      return NextResponse.json(
+        { error: embeddingResult.error || "Failed to create embedding function" },
+        { status: 400 }
+      );
+    }
+    embeddingFunction = embeddingResult.embeddingFunction;
+  }
+
+  // Get the collection (with embedding function for semantic search)
   const collectionResult = await getCollection(
     connection.host,
     connection.port,
-    collectionName
+    collectionName,
+    embeddingFunction
   );
 
   if (!collectionResult.success || !collectionResult.data) {

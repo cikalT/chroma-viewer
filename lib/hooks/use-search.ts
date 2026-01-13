@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useConnection } from "./use-connection";
+import { useEmbedding } from "./use-embedding";
 import type { ChromaRecord } from "@/types";
 
 export type SearchType = "text" | "semantic";
@@ -35,6 +36,7 @@ export function useSearch({
   limit = 20,
 }: UseSearchOptions): UseSearchReturn {
   const { connection } = useConnection();
+  const { embedding } = useEmbedding();
   const [results, setResults] = useState<ChromaRecord[]>([]);
   const [distances, setDistances] = useState<number[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -60,13 +62,25 @@ export function useSearch({
       setSearchType(type);
 
       try {
+        // Build headers
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+          "X-Chroma-Host": connection.host,
+          "X-Chroma-Port": String(connection.port),
+        };
+
+        // Add embedding headers for semantic search
+        if (type === "semantic" && embedding && embedding.provider !== "none") {
+          headers["X-Embedding-Provider"] = embedding.provider;
+          headers["X-Embedding-Api-Key"] = embedding.apiKey;
+          if (embedding.model) {
+            headers["X-Embedding-Model"] = embedding.model;
+          }
+        }
+
         const response = await fetch("/api/search", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Chroma-Host": connection.host,
-            "X-Chroma-Port": String(connection.port),
-          },
+          headers,
           body: JSON.stringify({
             collection,
             query,
@@ -93,7 +107,7 @@ export function useSearch({
         setIsSearching(false);
       }
     },
-    [collection, connection, limit]
+    [collection, connection, embedding, limit]
   );
 
   const clearSearch = useCallback(() => {

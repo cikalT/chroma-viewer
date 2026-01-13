@@ -1,4 +1,4 @@
-import { ChromaClient, type Collection } from "chromadb";
+import { ChromaClient, type Collection, type EmbeddingFunction } from "chromadb";
 import type {
   ChromaConnection,
   CollectionInfo,
@@ -65,16 +65,18 @@ export async function listCollections(
  * @param host - The hostname of the ChromaDB server
  * @param port - The port number of the ChromaDB server
  * @param name - The name of the collection to retrieve
+ * @param embeddingFunction - Optional embedding function for query operations
  * @returns A result object containing the collection or an error
  */
 export async function getCollection(
   host: string,
   port: number,
-  name: string
+  name: string,
+  embeddingFunction?: EmbeddingFunction
 ): Promise<ChromaResult<Collection>> {
   try {
     const client = getChromaClient(host, port);
-    const collection = await client.getCollection({ name });
+    const collection = await client.getCollection({ name, embeddingFunction });
 
     return {
       success: true,
