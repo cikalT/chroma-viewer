@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { Search, Eye } from "lucide-react";
+import { Search, Eye, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -33,7 +33,17 @@ export function createColumns({
   const baseColumns: ColumnDef<ChromaRecord>[] = [
     {
       accessorKey: "id",
-      header: "ID",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-3 h-8"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          ID
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
       cell: ({ row }) => {
         const id = row.getValue("id") as string;
         const displayId = id.length > 20 ? `${id.slice(0, 20)}...` : id;

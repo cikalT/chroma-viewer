@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import {
   ColumnDef,
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
+  SortingState,
   useReactTable,
 } from "@tanstack/react-table";
 import {
@@ -34,6 +37,8 @@ export function DataTable<TData, TValue>({
   isLoading = false,
   pageCount = 0,
 }: DataTableProps<TData, TValue>) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+
   // TanStack Table returns mutable functions that cannot be memoized
   // This is expected behavior for the library
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -41,6 +46,11 @@ export function DataTable<TData, TValue>({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onSortingChange: setSorting,
+    state: {
+      sorting,
+    },
     manualPagination: true,
     pageCount,
   });
