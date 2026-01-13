@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { Where, WhereDocument } from "chromadb";
 import { getConnectionFromHeaders, getCollection } from "@/lib/chroma";
-import { recordsQuerySchema } from "@/lib/validations";
+import { recordsQuerySchema, deleteRecordsBodySchema } from "@/lib/validations";
 import type { ChromaRecord } from "@/types";
 
 /**
@@ -105,6 +105,82 @@ export async function GET(request: Request) {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Failed to fetch records";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
+  }
+}
+
+/**
+ * DELETE /api/records
+ *
+ * Deletes records from a ChromaDB collection by their IDs.
+ * Requires X-Chroma-Host and X-Chroma-Port headers for connection.
+ *
+ * Request body:
+ * - collection (required): Name of the collection
+ * - ids (required): Array of record IDs to delete
+ *
+ * @returns JSON response with deleted count or error
+ */
+export async function DELETE(request: Request) {
+  // Get connection info from headers
+  const connection = getConnectionFromHeaders(request.headers);
+
+  if (!connection) {
+    return NextResponse.json(
+      { error: "Missing or invalid X-Chroma-Host and/or X-Chroma-Port headers" },
+      { status: 400 }
+    );
+  }
+
+  // Parse and validate request body
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid JSON in request body" },
+      { status: 400 }
+    );
+  }
+
+  const parseResult = deleteRecordsBodySchema.safeParse(body);
+
+  if (!parseResult.success) {
+    const errorMessage = parseResult.error.issues
+      .map((issue) => issue.message)
+      .join(", ");
+    return NextResponse.json({ error: errorMessage }, { status: 400 });
+  }
+
+  const { collection: collectionName, ids } = parseResult.data;
+
+  // Get the collection
+  const collectionResult = await getCollection(
+    connection.host,
+    connection.port,
+    collectionName
+  );
+
+  if (!collectionResult.success || !collectionResult.data) {
+    return NextResponse.json(
+      { error: collectionResult.error || "Collection not found" },
+      { status: 404 }
+    );
+  }
+
+  const collection = collectionResult.data;
+
+  try {
+    // Delete records by IDs
+    await collection.delete({ ids });
+
+    return NextResponse.json({
+      success: true,
+      deletedCount: ids.length,
+    });
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to delete records";
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

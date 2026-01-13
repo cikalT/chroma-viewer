@@ -66,8 +66,18 @@ export const metadataQuerySchema = z.object({
   collection: z.string().min(1, "Collection name is required"),
 });
 
+/**
+ * Schema for validating delete records request body.
+ * Used by DELETE /api/records endpoint.
+ */
+export const deleteRecordsBodySchema = z.object({
+  collection: z.string().min(1, "Collection name is required"),
+  ids: z.array(z.string()).min(1, "At least one record ID is required"),
+});
+
 // Type exports for convenience
 export type CollectionQuery = z.infer<typeof collectionQuerySchema>;
 export type RecordsQuery = z.infer<typeof recordsQuerySchema>;
 export type SearchBody = z.infer<typeof searchBodySchema>;
 export type MetadataQuery = z.infer<typeof metadataQuerySchema>;
+export type DeleteRecordsBody = z.infer<typeof deleteRecordsBodySchema>;

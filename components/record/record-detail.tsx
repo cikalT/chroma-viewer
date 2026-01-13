@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
@@ -21,6 +22,8 @@ interface RecordDetailProps {
   open: boolean;
   /** Callback when the dialog should close */
   onOpenChange: (open: boolean) => void;
+  /** Callback when delete is requested */
+  onDelete?: (record: ChromaRecord) => void;
 }
 
 /**
@@ -31,6 +34,7 @@ export function RecordDetail({
   record,
   open,
   onOpenChange,
+  onDelete,
 }: RecordDetailProps) {
   const [embeddingExpanded, setEmbeddingExpanded] = useState(false);
 
@@ -196,6 +200,19 @@ export function RecordDetail({
             </Section>
           </div>
         </div>
+
+        {onDelete && (
+          <DialogFooter className="flex-shrink-0 border-t pt-4">
+            <Button
+              variant="destructive"
+              onClick={() => onDelete(record)}
+              className="gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete Record
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

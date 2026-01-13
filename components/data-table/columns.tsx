@@ -1,8 +1,9 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { Search, Eye, ArrowUpDown } from "lucide-react";
+import { Search, Eye, ArrowUpDown, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Popover,
   PopoverContent,
@@ -16,8 +17,10 @@ import type { ChromaRecord } from "@/types";
 export interface ColumnsOptions {
   onFindSimilar?: (record: ChromaRecord) => void;
   onViewDetails?: (record: ChromaRecord) => void;
+  onDelete?: (record: ChromaRecord) => void;
   showDistance?: boolean;
   distances?: number[];
+  enableSelection?: boolean;
 }
 
 /**
@@ -27,11 +30,40 @@ export interface ColumnsOptions {
 export function createColumns({
   onFindSimilar,
   onViewDetails,
+  onDelete,
   showDistance = false,
   distances = [],
+  enableSelection = false,
 }: ColumnsOptions = {}): ColumnDef<ChromaRecord>[] {
-  const baseColumns: ColumnDef<ChromaRecord>[] = [
-    {
+  const baseColumns: ColumnDef<ChromaRecord>[] = [];
+
+  // Add selection checkbox column if enabled
+  if (enableSelection) {
+    baseColumns.push({
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    });
+  }
+
+  baseColumns.push({
       accessorKey: "id",
       header: ({ column }) => (
         <Button
@@ -101,7 +133,7 @@ export function createColumns({
         return <MetadataBadges metadata={metadata} />;
       },
     },
-  ];
+  );
 
   // Add distance column if showing search results
   if (showDistance) {
@@ -169,6 +201,19 @@ export function createColumns({
             <Search className="h-4 w-4" />
             Similar
           </Button>
+
+          {/* Delete button */}
+          {onDelete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => onDelete(record)}
+              title="Delete record"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       );
     },

@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Database, AlertCircle, X } from "lucide-react";
+import { Database, AlertCircle, X, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { RowSelectionState } from "@tanstack/react-table";
 import { useConnection } from "@/lib/hooks/use-connection";
 import { useRecords } from "@/lib/hooks/use-records";
 import { useSearch } from "@/lib/hooks/use-search";
@@ -17,6 +19,7 @@ import { ExportButton } from "@/components/data-table/export-button";
 import { SearchBar } from "@/components/search/search-bar";
 import { FilterBar } from "@/components/filters/filter-bar";
 import { RecordDetail } from "@/components/record/record-detail";
+import { DeleteConfirmDialog } from "@/components/record/delete-confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import type { ChromaRecord } from "@/types";
@@ -28,11 +31,17 @@ import type { ChromaRecord } from "@/types";
  */
 export default function Home() {
   const router = useRouter();
-  const { isConnected } = useConnection();
+  const { connection, isConnected } = useConnection();
   const [selectedCollection, setSelectedCollection] = useState<string>("");
   const [isHydrated, setIsHydrated] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<ChromaRecord | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  // Delete state
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [recordsToDelete, setRecordsToDelete] = useState<ChromaRecord[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Filters hook
   const {
@@ -59,6 +68,7 @@ export default function Home() {
     setPageSize,
     isLoading,
     error: recordsError,
+    refetch,
   } = useRecords({
     collection: selectedCollection,
     where: whereClause,
@@ -91,10 +101,11 @@ export default function Home() {
     }
   }, [isHydrated, isConnected, router]);
 
-  // Clear search and filters when collection changes
+  // Clear search, filters, and selection when collection changes
   useEffect(() => {
     clearSearch();
     clearFilters();
+    setRowSelection({});
   }, [selectedCollection, clearSearch, clearFilters]);
 
   // Handle Find Similar action
@@ -112,6 +123,67 @@ export default function Home() {
     setSelectedRecord(record);
     setIsDetailOpen(true);
   }, []);
+
+  // Handle single record delete request
+  const handleDeleteRequest = useCallback((record: ChromaRecord) => {
+    setRecordsToDelete([record]);
+    setDeleteDialogOpen(true);
+  }, []);
+
+  // Handle bulk delete request (from selected rows)
+  const handleBulkDeleteRequest = useCallback(() => {
+    const data = isSearchActive ? searchResults : records;
+    const selectedIndices = Object.keys(rowSelection).map(Number);
+    const selectedRecords = selectedIndices.map((i) => data[i]).filter(Boolean);
+    if (selectedRecords.length > 0) {
+      setRecordsToDelete(selectedRecords);
+      setDeleteDialogOpen(true);
+    }
+  }, [rowSelection, isSearchActive, searchResults, records]);
+
+  // Perform the actual delete
+  const handleConfirmDelete = useCallback(async () => {
+    if (!connection || recordsToDelete.length === 0) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch("/api/records", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Chroma-Host": connection.host,
+          "X-Chroma-Port": String(connection.port),
+        },
+        body: JSON.stringify({
+          collection: selectedCollection,
+          ids: recordsToDelete.map((r) => r.id),
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete records");
+      }
+
+      const data = await response.json();
+      toast.success(`Deleted ${data.deletedCount} record${data.deletedCount !== 1 ? "s" : ""}`);
+
+      // Close dialogs and reset state
+      setDeleteDialogOpen(false);
+      setIsDetailOpen(false);
+      setSelectedRecord(null);
+      setRecordsToDelete([]);
+      setRowSelection({});
+
+      // Refresh the records list
+      refetch();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Delete failed";
+      toast.error("Delete failed", { description: errorMessage });
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [connection, recordsToDelete, selectedCollection, refetch]);
 
   // Keyboard shortcut handlers
   const handleFocusSearch = useCallback(() => {
@@ -155,11 +227,16 @@ export default function Home() {
       createColumns({
         onFindSimilar: selectedCollection ? handleFindSimilar : undefined,
         onViewDetails: handleViewDetails,
+        onDelete: handleDeleteRequest,
         showDistance: isSearchActive,
         distances: distances,
+        enableSelection: true,
       }),
-    [selectedCollection, handleFindSimilar, handleViewDetails, isSearchActive, distances]
+    [selectedCollection, handleFindSimilar, handleViewDetails, handleDeleteRequest, isSearchActive, distances]
   );
+
+  // Count selected rows
+  const selectedCount = Object.keys(rowSelection).length;
 
   // Determine which data to show
   const displayData = isSearchActive ? searchResults : records;
@@ -276,12 +353,41 @@ export default function Home() {
               </div>
             )}
 
+            {/* Bulk delete bar */}
+            {selectedCount > 0 && (
+              <div className="flex items-center justify-between rounded-lg border bg-muted/50 px-4 py-3">
+                <span className="text-sm font-medium">
+                  {selectedCount} record{selectedCount !== 1 ? "s" : ""} selected
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setRowSelection({})}
+                  >
+                    Clear selection
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleBulkDeleteRequest}
+                    className="gap-1.5"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete selected
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Data table */}
             <DataTable
               columns={tableColumns}
               data={displayData}
               isLoading={isLoading || isSearching}
               pageCount={isSearchActive ? 1 : totalPages}
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
             />
 
             {/* Pagination (only show when not searching) */}
@@ -322,6 +428,17 @@ export default function Home() {
         record={selectedRecord}
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
+        onDelete={handleDeleteRequest}
+      />
+
+      {/* Delete confirmation dialog */}
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        count={recordsToDelete.length}
+        recordId={recordsToDelete.length === 1 ? recordsToDelete[0]?.id : undefined}
+        onConfirm={handleConfirmDelete}
+        isDeleting={isDeleting}
       />
     </div>
   );
