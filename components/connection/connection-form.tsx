@@ -3,6 +3,7 @@
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -61,6 +62,7 @@ export function ConnectionForm({
 
       // Connection successful - save it
       setConnection({ host, port });
+      toast.success(`Connected to ChromaDB at ${host}:${port}`);
 
       if (onSuccess) {
         onSuccess();
@@ -75,6 +77,7 @@ export function ConnectionForm({
           ? err.message
           : "Failed to connect to ChromaDB server";
       setError(message);
+      toast.error("Connection failed", { description: message });
     } finally {
       setIsLoading(false);
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { Search } from "lucide-react";
+import { Search, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -10,10 +10,12 @@ import {
 } from "@/components/ui/popover";
 import { DocumentCell } from "@/components/record/document-cell";
 import { MetadataBadges } from "@/components/record/metadata-badges";
+import { CopyButton } from "@/components/ui/copy-button";
 import type { ChromaRecord } from "@/types";
 
 export interface ColumnsOptions {
   onFindSimilar?: (record: ChromaRecord) => void;
+  onViewDetails?: (record: ChromaRecord) => void;
   showDistance?: boolean;
   distances?: number[];
 }
@@ -24,6 +26,7 @@ export interface ColumnsOptions {
  */
 export function createColumns({
   onFindSimilar,
+  onViewDetails,
   showDistance = false,
   distances = [],
 }: ColumnsOptions = {}): ColumnDef<ChromaRecord>[] {
@@ -36,16 +39,27 @@ export function createColumns({
         const displayId = id.length > 20 ? `${id.slice(0, 20)}...` : id;
 
         return (
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="font-mono text-sm text-left hover:underline cursor-pointer">
-                {displayId}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto max-w-md">
-              <p className="font-mono text-sm break-all">{id}</p>
-            </PopoverContent>
-          </Popover>
+          <div className="flex items-center gap-1">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="font-mono text-sm text-left hover:underline cursor-pointer">
+                  {displayId}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto max-w-md">
+                <div className="flex items-center gap-2">
+                  <p className="font-mono text-sm break-all flex-1">{id}</p>
+                  <CopyButton value={id} label="ID copied" />
+                </div>
+              </PopoverContent>
+            </Popover>
+            <CopyButton
+              value={id}
+              label="ID copied"
+              size="icon-sm"
+              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+            />
+          </div>
         );
       },
     },
@@ -54,7 +68,19 @@ export function createColumns({
       header: "Document",
       cell: ({ row }) => {
         const document = row.getValue("document") as string | null;
-        return <DocumentCell document={document} />;
+        return (
+          <div className="flex items-start gap-1">
+            <DocumentCell document={document} />
+            {document && (
+              <CopyButton
+                value={document}
+                label="Document copied"
+                size="icon-sm"
+                className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              />
+            )}
+          </div>
+        );
       },
     },
     {
@@ -93,30 +119,47 @@ export function createColumns({
     cell: ({ row }) => {
       const record = row.original;
       const hasDocument = record.document !== null && record.document !== "";
-      const isEnabled = onFindSimilar !== undefined && hasDocument;
+      const canFindSimilar = onFindSimilar !== undefined && hasDocument;
 
       return (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 gap-1.5"
-          disabled={!isEnabled}
-          onClick={() => {
-            if (onFindSimilar && record.document) {
-              onFindSimilar(record);
+        <div className="flex items-center gap-1">
+          {/* View Details button */}
+          {onViewDetails && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() => onViewDetails(record)}
+              title="View record details"
+            >
+              <Eye className="h-4 w-4" />
+              Details
+            </Button>
+          )}
+
+          {/* Find Similar button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-1.5"
+            disabled={!canFindSimilar}
+            onClick={() => {
+              if (onFindSimilar && record.document) {
+                onFindSimilar(record);
+              }
+            }}
+            title={
+              !hasDocument
+                ? "No document to search"
+                : !onFindSimilar
+                ? "Search not available"
+                : "Find similar documents"
             }
-          }}
-          title={
-            !hasDocument
-              ? "No document to search"
-              : !onFindSimilar
-              ? "Search not available"
-              : "Find similar documents"
-          }
-        >
-          <Search className="h-4 w-4" />
-          Find Similar
-        </Button>
+          >
+            <Search className="h-4 w-4" />
+            Similar
+          </Button>
+        </div>
       );
     },
   });

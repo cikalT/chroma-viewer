@@ -8,13 +8,15 @@ import { useRecords } from "@/lib/hooks/use-records";
 import { useSearch } from "@/lib/hooks/use-search";
 import { useFilters } from "@/lib/hooks/use-filters";
 import { useMetadata } from "@/lib/hooks/use-metadata";
-import { ConnectionStatus } from "@/components/connection/connection-status";
-import { CollectionSelector } from "@/components/connection/collection-selector";
+import { useKeyboardShortcuts } from "@/lib/hooks/use-keyboard-shortcuts";
+import { Header } from "@/components/layout/header";
 import { DataTable } from "@/components/data-table/data-table";
 import { createColumns } from "@/components/data-table/columns";
 import { Pagination } from "@/components/data-table/pagination";
+import { ExportButton } from "@/components/data-table/export-button";
 import { SearchBar } from "@/components/search/search-bar";
 import { FilterBar } from "@/components/filters/filter-bar";
+import { RecordDetail } from "@/components/record/record-detail";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import type { ChromaRecord } from "@/types";
@@ -29,6 +31,8 @@ export default function Home() {
   const { isConnected } = useConnection();
   const [selectedCollection, setSelectedCollection] = useState<string>("");
   const [isHydrated, setIsHydrated] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<ChromaRecord | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   // Filters hook
   const {
@@ -101,15 +105,58 @@ export default function Home() {
     [search]
   );
 
+  // Handle View Details action
+  const handleViewDetails = useCallback((record: ChromaRecord) => {
+    setSelectedRecord(record);
+    setIsDetailOpen(true);
+  }, []);
+
+  // Keyboard shortcut handlers
+  const handleFocusSearch = useCallback(() => {
+    // Find the search input and focus it
+    const searchInput = document.querySelector('input[type="text"][placeholder*="Search"]') as HTMLInputElement;
+    if (searchInput) {
+      searchInput.focus();
+    }
+  }, []);
+
+  const handleClearAll = useCallback(() => {
+    clearSearch();
+    clearFilters();
+  }, [clearSearch, clearFilters]);
+
+  const handlePreviousPage = useCallback(() => {
+    if (page > 1 && !isSearchActive) {
+      setPage(page - 1);
+    }
+  }, [page, isSearchActive, setPage]);
+
+  const handleNextPage = useCallback(() => {
+    const totalPages = Math.ceil(total / pageSize);
+    if (page < totalPages && !isSearchActive) {
+      setPage(page + 1);
+    }
+  }, [page, total, pageSize, isSearchActive, setPage]);
+
+  // Enable keyboard shortcuts
+  useKeyboardShortcuts({
+    onFocusSearch: handleFocusSearch,
+    onClear: handleClearAll,
+    onPreviousPage: handlePreviousPage,
+    onNextPage: handleNextPage,
+    enabled: isHydrated && isConnected,
+  });
+
   // Create columns with proper callbacks
   const tableColumns = useMemo(
     () =>
       createColumns({
         onFindSimilar: selectedCollection ? handleFindSimilar : undefined,
+        onViewDetails: handleViewDetails,
         showDistance: isSearchActive,
         distances: distances,
       }),
-    [selectedCollection, handleFindSimilar, isSearchActive, distances]
+    [selectedCollection, handleFindSimilar, handleViewDetails, isSearchActive, distances]
   );
 
   // Determine which data to show
@@ -144,39 +191,34 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black">
       {/* Header */}
-      <header className="border-b bg-white dark:bg-zinc-950">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            <Database className="h-6 w-6" />
-            <h1 className="text-xl font-semibold">Chroma DB Viewer</h1>
-          </div>
-          <ConnectionStatus />
-        </div>
-      </header>
+      <Header
+        selectedCollection={selectedCollection}
+        onCollectionChange={setSelectedCollection}
+        showCollectionSelector={true}
+        showSettingsButton={true}
+      />
 
       {/* Main content */}
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-8">
-        {/* Collection selector */}
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-muted-foreground">
-            Collection:
-          </span>
-          <CollectionSelector
-            value={selectedCollection}
-            onSelect={setSelectedCollection}
-          />
-        </div>
-
         {/* Content area */}
         {selectedCollection ? (
           <div className="flex flex-1 flex-col gap-4">
-            {/* Search bar */}
-            <SearchBar
-              onSearch={search}
-              onClear={clearSearch}
-              isSearching={isSearching}
-              disabled={!selectedCollection}
-            />
+            {/* Search bar and export button */}
+            <div className="flex items-start gap-4">
+              <div className="flex-1">
+                <SearchBar
+                  onSearch={search}
+                  onClear={clearSearch}
+                  isSearching={isSearching}
+                  disabled={!selectedCollection}
+                />
+              </div>
+              <ExportButton
+                data={displayData}
+                collectionName={selectedCollection}
+                disabled={displayData.length === 0}
+              />
+            </div>
 
             {/* Filter bar */}
             <FilterBar
@@ -250,6 +292,13 @@ export default function Home() {
                 onPageSizeChange={setPageSize}
               />
             )}
+
+            {/* Keyboard shortcuts hint */}
+            <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+              <span><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono">/</kbd> Search</span>
+              <span><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono">Esc</kbd> Clear</span>
+              <span><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono">←</kbd> <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono">→</kbd> Navigate pages</span>
+            </div>
           </div>
         ) : (
           <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed bg-white p-12 dark:bg-zinc-950">
@@ -259,12 +308,19 @@ export default function Home() {
                 Select a Collection
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                Choose a collection from the dropdown above to view its records
+                Choose a collection from the header dropdown to view its records
               </p>
             </div>
           </div>
         )}
       </main>
+
+      {/* Record detail dialog */}
+      <RecordDetail
+        record={selectedRecord}
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+      />
     </div>
   );
 }
